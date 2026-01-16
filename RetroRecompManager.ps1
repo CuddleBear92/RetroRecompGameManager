@@ -507,6 +507,8 @@ function Refresh-Grid {
         $rowIndex = $dataGrid.Rows.Add($game.title, $currentVersion, $latestVersion, $status)
         if ($release) {
             $dataGrid.Rows[$rowIndex].Cells[2].Tag = $release.html_url  # Store release URL in Tag
+        } elseif ($latestVersion -ne "Unknown") {
+            $dataGrid.Rows[$rowIndex].Cells[2].Tag = "https://github.com/$($game.repo)/"
         }
     }
 
