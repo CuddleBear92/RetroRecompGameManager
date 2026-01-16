@@ -27,13 +27,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RetroRecompManager-exe
-          path: .\RetroRecompManager.exe
+          path: ./RetroRecompManager.exe  # Use forward slash for path
           retention-days: 7  # Keep for 7 days
 
       - name: Create or update release if tagged
         if: startsWith(github.ref, 'refs/tags/')
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ".\RetroRecompManager.exe"
+          artifacts: "./RetroRecompManager.exe"  # Use forward slash and quotes
           generateReleaseNotes: false
           token: ${{ secrets.GITHUB_TOKEN }}
