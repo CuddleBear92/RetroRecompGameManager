@@ -1,5 +1,5 @@
 # RetroRecompManager.ps1
-# A unified UI for managing and updating retro game recompilations from GitHub
+# A unified UI for managing and updating retro game recompilations from GitHub.
 
 # Ensure TLS 1.2 is used for secure connections
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
