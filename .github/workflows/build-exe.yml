@@ -37,6 +37,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: ncipollo/release-action@v1
         with:
-          artifacts: ".\RetroRecompManager.exe"
+          artifacts: "./RetroRecompManager.exe"
           generateReleaseNotes: false
           token: ${{ secrets.GITHUB_TOKEN }}
