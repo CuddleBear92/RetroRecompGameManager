@@ -7,6 +7,9 @@ on:
     tags:
       - 'v*'  # Trigger on new tags like v1.1.8 for releases
 
+permissions:
+  contents: write  # Required for creating/updating releases
+
 jobs:
   build:
     runs-on: windows-latest  # Use Windows runner for PS2EXE
@@ -27,13 +30,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RetroRecompManager-exe
-          path: ./RetroRecompManager.exe  # Use forward slash for path
+          path: .\RetroRecompManager.exe
           retention-days: 7  # Keep for 7 days
 
       - name: Create or update release if tagged
         if: startsWith(github.ref, 'refs/tags/')
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "./RetroRecompManager.exe"  # Use forward slash and quotes
+          artifacts: ".\RetroRecompManager.exe"
           generateReleaseNotes: false
           token: ${{ secrets.GITHUB_TOKEN }}
