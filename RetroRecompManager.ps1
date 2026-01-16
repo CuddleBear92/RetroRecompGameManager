@@ -33,6 +33,7 @@ if (-not (Test-Path $configFile)) {
     $defaultConfig = @{
         installRoot = "Games"  # Relative to scriptDir
         savesRoot = "Saves"  # Relative to scriptDir, for backup saves
+        enableSaveBackup = $true  # Enable/disable save backups after play
         githubToken = $null  # Optional: Add your GitHub personal access token here to avoid rate limits
         games = @(
             @{
@@ -108,7 +109,7 @@ if (-not (Test-Path $configFile)) {
                 cachedLatestVersion = $null
                 lastChecked = $null
                 playExe = $null
-                savePath = $null  # Add if known
+                savePath = $null
                 repo = "fgsfdsfgs/perfect_dark"
                 cleanup = $true
             },
@@ -119,7 +120,7 @@ if (-not (Test-Path $configFile)) {
                 cachedLatestVersion = $null
                 lastChecked = $null
                 playExe = $null
-                savePath = $null  # Add if known
+                savePath = $null
                 repo = "hedge-dev/UnleashedRecomp"
                 cleanup = $true
             },
@@ -141,7 +142,7 @@ if (-not (Test-Path $configFile)) {
                 cachedLatestVersion = $null
                 lastChecked = $null
                 playExe = $null
-                savePath = $null  # Add if known
+                savePath = $null
                 repo = "RadzPrower/Super-Metroid-Launcher"
                 cleanup = $true
             },
@@ -152,7 +153,7 @@ if (-not (Test-Path $configFile)) {
                 cachedLatestVersion = $null
                 lastChecked = $null
                 playExe = $null
-                savePath = $null  # Add if known
+                savePath = $null
                 repo = "wipeout-phantom-edition/wipeout-phantom-edition"
                 cleanup = $true
             },
@@ -174,7 +175,7 @@ if (-not (Test-Path $configFile)) {
                 cachedLatestVersion = $null
                 lastChecked = $null
                 playExe = $null
-                savePath = $null  # Add if known
+                savePath = $null
                 repo = "RadzPrower/Zelda-3-Launcher"
                 cleanup = $true
             }
@@ -201,11 +202,25 @@ if (-not $config.installRoot) {
     $config | Add-Member -MemberType NoteProperty -Name installRoot -Value "Games"
     $config | ConvertTo-Json -Depth 3 | Set-Content $configFile
 }
+if (-not $config.savesRoot) {
+    $config | Add-Member -MemberType NoteProperty -Name savesRoot -Value "Saves"
+    $config | ConvertTo-Json -Depth 3 | Set-Content $configFile
+}
+if ($null -eq $config.enableSaveBackup) {
+    $config | Add-Member -MemberType NoteProperty -Name enableSaveBackup -Value $true
+    $config | ConvertTo-Json -Depth 3 | Set-Content $configFile
+}
 
 # Compute root install path
 $installRootPath = Join-Path $scriptDir $config.installRoot
 if (-not (Test-Path $installRootPath)) {
     New-Item -ItemType Directory -Path $installRootPath -Force | Out-Null
+}
+
+# Compute saves root path
+$savesRootPath = Join-Path $scriptDir $config.savesRoot
+if (-not (Test-Path $savesRootPath)) {
+    New-Item -ItemType Directory -Path $savesRootPath -Force | Out-Null
 }
 
 # Function to sanitize folder name
@@ -397,8 +412,8 @@ function Play-Game {
     $process = Start-Process -FilePath $exePath -WorkingDirectory $installPath -PassThru
     $process.WaitForExit()
 
-    # Backup saves if savePath set
-    if ($game.savePath) {
+    # Backup saves if enabled and savePath set
+    if ($config.enableSaveBackup -and $game.savePath) {
         $expandedSavePath = [Environment]::ExpandEnvironmentVariables($game.savePath)
         if (Test-Path $expandedSavePath) {
             $backupSavePath = Join-Path $savesRootPath (Sanitize-FolderName $game.title)
