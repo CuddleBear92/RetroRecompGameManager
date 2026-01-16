@@ -5,7 +5,7 @@ on:
     branches:
       - main  # Trigger on pushes to main
     tags:
-      - 'v*'  # Trigger on new tags like v1.0 for releases
+      - 'v*'  # Trigger on new tags like v1.1.8 for releases
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install PS2EXE module
-        shell: pwsh  # Use PowerShell Core (pre-installed)
+        shell: pwsh
         run: Install-Module -Name PS2EXE -Force -Scope CurrentUser
 
       - name: Compile PS1 to EXE
@@ -30,9 +30,10 @@ jobs:
           path: .\RetroRecompManager.exe
           retention-days: 7  # Keep for 7 days
 
-      - name: Release if tagged
+      - name: Create or update release if tagged
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2  # Modern release action
+        uses: ncipollo/release-action@v1
         with:
-          files: .\RetroRecompManager.exe
-          generate_release_notes: true  # Auto-notes for QoL
+          artifacts: ".\RetroRecompManager.exe"
+          generateReleaseNotes: false  # Avoid permission error; add manual notes in repo
+          token: ${{ secrets.GITHUB_TOKEN }}
