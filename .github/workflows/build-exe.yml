@@ -1,0 +1,56 @@
+name: Build RetroRecompManager EXE
+
+on:
+  push:
+    branches:
+      - main  # Trigger on pushes to main
+    tags:
+      - 'v*'  # Trigger on new tags like v1.0 for releases
+
+jobs:
+  build:
+    runs-on: windows-latest  # Use Windows runner for PS2EXE
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PowerShell
+        uses: microsoft/powershell@v1
+        with:
+          shell: pwsh  # Use PowerShell Core
+
+      - name: Install PS2EXE module
+        run: Install-Module -Name PS2EXE -Force -Scope CurrentUser
+
+      - name: Compile PS1 to EXE
+        run: Invoke-PS2EXE .\RetroRecompManager.ps1 .\RetroRecompManager.exe -NoConsole
+
+      - name: Upload EXE as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RetroRecompManager-exe
+          path: .\RetroRecompManager.exe
+          retention-days: 7  # Keep artifact for 7 days
+
+      - name: Create release if tagged
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload EXE to release if tagged
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: .\RetroRecompManager.exe
+          asset_name: RetroRecompManager.exe
+          asset_content_type: application/octet-stream
