@@ -35,5 +35,5 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: ".\RetroRecompManager.exe"
-          generateReleaseNotes: false  # Avoid permission error; add manual notes in repo
+          generateReleaseNotes: false
           token: ${{ secrets.GITHUB_TOKEN }}
