@@ -32,6 +32,7 @@ if (-not (Test-Path $configFile)) {
     $defaultPattern = if ($IsWindows) { "*Windows*.zip" } elseif ($IsLinux) { "*Linux*.zip" } else { "*Windows*.zip" }
     $defaultConfig = @{
         installRoot = "Games"  # Relative to scriptDir
+        savesRoot = "Saves"  # Relative to scriptDir, for backup saves
         githubToken = $null  # Optional: Add your GitHub personal access token here to avoid rate limits
         games = @(
             @{
@@ -40,6 +41,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null  # Detected EXE name after install
+                savePath = "%localappdata%\\ChameleonTwistRecompiled"  # Hardcoded save path
                 repo = "Rainchus/ChameleonTwist1-JP-Recomp"
                 cleanup = $true
             },
@@ -49,7 +52,20 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = "%localappdata%\\DinoPlanetRecompiled"
                 repo = "DinosaurPlanetRecomp/dino-recomp"
+                cleanup = $true
+            },
+            @{
+                assetPattern = "*Windows*.zip"
+                title = "Dr Mario 64: Recompiled"
+                currentVersion = $null
+                cachedLatestVersion = $null
+                lastChecked = $null
+                playExe = $null
+                savePath = "%localappdata%\\drmario64_recomp"
+                repo = "theboy181/drmario64_recomp_plus"
                 cleanup = $true
             },
             @{
@@ -58,6 +74,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = "%localappdata%\\DNZHRecompiled"
                 repo = "sonicdcer/DNZHRecomp"
                 cleanup = $true
             },
@@ -67,6 +85,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = "%localappdata%\\Goemon64Recompiled"
                 repo = "klorfmorf/Goemon64Recomp"
                 cleanup = $true
             },
@@ -76,6 +96,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = "%localappdata%\\MarioKart64Recompiled"
                 repo = "sonicdcer/MarioKart64Recomp"
                 cleanup = $true
             },
@@ -85,6 +107,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = $null  # Add if known
                 repo = "fgsfdsfgs/perfect_dark"
                 cleanup = $true
             },
@@ -94,6 +118,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = $null  # Add if known
                 repo = "hedge-dev/UnleashedRecomp"
                 cleanup = $true
             },
@@ -103,6 +129,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = "%localappdata%\\Starfox64Recompiled"
                 repo = "sonicdcer/Starfox64Recomp"
                 cleanup = $true
             },
@@ -112,6 +140,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = $null  # Add if known
                 repo = "RadzPrower/Super-Metroid-Launcher"
                 cleanup = $true
             },
@@ -121,6 +151,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = $null  # Add if known
                 repo = "wipeout-phantom-edition/wipeout-phantom-edition"
                 cleanup = $true
             },
@@ -130,6 +162,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = "%localappdata%\\Zelda64Recompiled"
                 repo = "Zelda64Recomp/Zelda64Recomp"
                 cleanup = $true
             },
@@ -139,6 +173,8 @@ if (-not (Test-Path $configFile)) {
                 currentVersion = $null
                 cachedLatestVersion = $null
                 lastChecked = $null
+                playExe = $null
+                savePath = $null  # Add if known
                 repo = "RadzPrower/Zelda-3-Launcher"
                 cleanup = $true
             }
@@ -310,6 +346,14 @@ function Update-Game {
         return
     }
 
+    # Detect playExe if not set (scan for .exe in installPath)
+    if (-not $game.playExe) {
+        $exes = Get-ChildItem -Path $installPath -Filter *.exe -Recurse | Select-Object -First 1
+        if ($exes) {
+            $config.games[$index].playExe = $exes.FullName.Replace($installPath, "").TrimStart('\')  # Store relative path
+        }
+    }
+
     # Update current version and cache
     $config.games[$index].currentVersion = $release.tag_name
     $config.games[$index].cachedLatestVersion = $release.tag_name
@@ -328,6 +372,44 @@ function Update-Game {
     [System.Windows.Forms.MessageBox]::Show("Updated $($game.title) to version $($release.tag_name).", "Success", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
     # Refresh UI
+    Refresh-Grid
+}
+
+# Function to play the game
+function Play-Game {
+    param (
+        [int]$index
+    )
+    $game = $config.games[$index]
+    if (-not $game.playExe) {
+        [System.Windows.Forms.MessageBox]::Show("No playable EXE found for $($game.title). Update the game first.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        return
+    }
+
+    $installPath = Join-Path $installRootPath (Sanitize-FolderName $game.title)
+    $exePath = Join-Path $installPath $game.playExe
+    if (-not (Test-Path $exePath)) {
+        [System.Windows.Forms.MessageBox]::Show("EXE not found at $exePath for $($game.title).", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        return
+    }
+
+    # Start process (no time tracking)
+    $process = Start-Process -FilePath $exePath -WorkingDirectory $installPath -PassThru
+    $process.WaitForExit()
+
+    # Backup saves if savePath set
+    if ($game.savePath) {
+        $expandedSavePath = [Environment]::ExpandEnvironmentVariables($game.savePath)
+        if (Test-Path $expandedSavePath) {
+            $backupSavePath = Join-Path $savesRootPath (Sanitize-FolderName $game.title)
+            if (-not (Test-Path $backupSavePath)) {
+                New-Item -ItemType Directory -Path $backupSavePath -Force | Out-Null
+            }
+            Copy-Item -Path "$expandedSavePath\*" -Destination $backupSavePath -Recurse -Force
+        }
+    }
+
+    # Refresh UI (if needed)
     Refresh-Grid
 }
 
@@ -383,107 +465,6 @@ function Remove-Game {
     Refresh-Grid
 }
 
-# Function to add new game
-function Add-NewGame {
-    $addForm = New-Object System.Windows.Forms.Form
-    $addForm.Text = "Add New Game"
-    $addForm.Size = New-Object System.Drawing.Size(400, 250)
-    $addForm.StartPosition = "CenterParent"
-    $addForm.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
-    $addForm.ForeColor = [System.Drawing.Color]::White
-
-    # Title label and textbox
-    $titleLabel = New-Object System.Windows.Forms.Label
-    $titleLabel.Text = "Title:"
-    $titleLabel.Location = New-Object System.Drawing.Point(10, 20)
-    $titleLabel.Size = New-Object System.Drawing.Size(100, 20)
-    $addForm.Controls.Add($titleLabel)
-
-    $titleBox = New-Object System.Windows.Forms.TextBox
-    $titleBox.Location = New-Object System.Drawing.Point(120, 20)
-    $titleBox.Size = New-Object System.Drawing.Size(250, 20)
-    $titleBox.BackColor = [System.Drawing.Color]::FromArgb(50, 50, 50)
-    $titleBox.ForeColor = [System.Drawing.Color]::White
-    $addForm.Controls.Add($titleBox)
-
-    # Repo/URL label and textbox
-    $repoLabel = New-Object System.Windows.Forms.Label
-    $repoLabel.Text = "GitHub Repo/URL:"
-    $repoLabel.Location = New-Object System.Drawing.Point(10, 60)
-    $repoLabel.Size = New-Object System.Drawing.Size(100, 20)
-    $addForm.Controls.Add($repoLabel)
-
-    $repoBox = New-Object System.Windows.Forms.TextBox
-    $repoBox.Location = New-Object System.Drawing.Point(120, 60)
-    $repoBox.Size = New-Object System.Drawing.Size(250, 20)
-    $repoBox.BackColor = [System.Drawing.Color]::FromArgb(50, 50, 50)
-    $repoBox.ForeColor = [System.Drawing.Color]::White
-    $addForm.Controls.Add($repoBox)
-
-    # Asset Pattern label and textbox (OS-based default)
-    $defaultPattern = if ($IsWindows) { "*Windows*.zip" } elseif ($IsLinux) { "*Linux*.zip" } else { "*Windows*.zip" }
-    $patternLabel = New-Object System.Windows.Forms.Label
-    $patternLabel.Text = "Asset Pattern:"
-    $patternLabel.Location = New-Object System.Drawing.Point(10, 100)
-    $patternLabel.Size = New-Object System.Drawing.Size(100, 20)
-    $addForm.Controls.Add($patternLabel)
-
-    $patternBox = New-Object System.Windows.Forms.TextBox
-    $patternBox.Location = New-Object System.Drawing.Point(120, 100)
-    $patternBox.Size = New-Object System.Drawing.Size(250, 20)
-    $patternBox.Text = $defaultPattern
-    $patternBox.BackColor = [System.Drawing.Color]::FromArgb(50, 50, 50)
-    $patternBox.ForeColor = [System.Drawing.Color]::White
-    $addForm.Controls.Add($patternBox)
-
-    # OK button
-    $okBtn = New-Object System.Windows.Forms.Button
-    $okBtn.Text = "OK"
-    $okBtn.Location = New-Object System.Drawing.Point(120, 150)
-    $okBtn.Size = New-Object System.Drawing.Size(75, 30)
-    $okBtn.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
-    $okBtn.ForeColor = [System.Drawing.Color]::White
-    $okBtn.Add_Click({
-        if ([string]::IsNullOrWhiteSpace($titleBox.Text) -or [string]::IsNullOrWhiteSpace($repoBox.Text)) {
-            [System.Windows.Forms.MessageBox]::Show("Title and Repo/URL are required.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            return
-        }
-
-        # Parse repo from URL if needed
-        $repo = $repoBox.Text
-        if ($repo -match '^https?://github\.com/(.+?/.+?)(/.*)?$') {
-            $repo = $Matches[1]
-        }
-
-        $newGame = @{
-            title = $titleBox.Text
-            repo = $repo
-            assetPattern = $patternBox.Text
-            currentVersion = $null
-            cachedLatestVersion = $null
-            lastChecked = $null
-            cleanup = $true
-        }
-        $config.games += $newGame
-        $config | ConvertTo-Json -Depth 3 | Set-Content $configFile
-        Refresh-Grid
-        $addForm.Close()
-    })
-    $addForm.Controls.Add($okBtn)
-
-    # Cancel button
-    $cancelBtn = New-Object System.Windows.Forms.Button
-    $cancelBtn.Text = "Cancel"
-    $cancelBtn.Location = New-Object System.Drawing.Point(210, 150)
-    $cancelBtn.Size = New-Object System.Drawing.Size(75, 30)
-    $cancelBtn.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
-    $cancelBtn.ForeColor = [System.Drawing.Color]::White
-    $cancelBtn.Add_Click({ $addForm.Close() })
-    $addForm.Controls.Add($cancelBtn)
-
-    $addForm.ShowDialog() | Out-Null
-}
-
 # Function to refresh the data grid with caching
 function Refresh-Grid {
     $dataGrid.Rows.Clear()
@@ -493,7 +474,7 @@ function Refresh-Grid {
         $latestVersion = "Unknown"
         $release = $null
         $lastCheckedDate = if ($game.lastChecked) { [DateTime]::Parse($game.lastChecked) } else { [DateTime]::MinValue }
-        if (($lastCheckedDate - [DateTime]::UtcNow).TotalDays -lt -1) {  # Check if more than 1 day old
+        if (([DateTime]::UtcNow - $lastCheckedDate).TotalDays -gt 1) {  # Check if more than 1 day old
             $release = Get-LatestRelease -repo $game.repo
             if ($release) {
                 $latestVersion = $release.tag_name
@@ -581,6 +562,15 @@ $updateBtnColumn.Width = 100
 $updateBtnColumn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $dataGrid.Columns.Add($updateBtnColumn) | Out-Null
 
+# Play button column
+$playBtnColumn = New-Object System.Windows.Forms.DataGridViewButtonColumn
+$playBtnColumn.HeaderText = "Play"
+$playBtnColumn.Text = "Play"
+$playBtnColumn.UseColumnTextForButtonValue = $true
+$playBtnColumn.Width = 100
+$playBtnColumn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$dataGrid.Columns.Add($playBtnColumn) | Out-Null
+
 # Open Folder button column
 $openBtnColumn = New-Object System.Windows.Forms.DataGridViewButtonColumn
 $openBtnColumn.HeaderText = "Open Folder"
@@ -622,9 +612,11 @@ $dataGrid.Add_CellContentClick({
         }
     } elseif ($columnIndex -eq 4) {  # Update button
         Update-Game -index $rowIndex
-    } elseif ($columnIndex -eq 5) {  # Open Folder button
+    } elseif ($columnIndex -eq 5) {  # Play button
+        Play-Game -index $rowIndex
+    } elseif ($columnIndex -eq 6) {  # Open Folder button
         Open-InstallFolder -index $rowIndex
-    } elseif ($columnIndex -eq 6) {  # Remove button
+    } elseif ($columnIndex -eq 7) {  # Remove button
         Remove-Game -index $rowIndex
     }
 })
